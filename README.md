@@ -12,7 +12,7 @@
 ### Swift Package Manager
 
 ```swift
-.package(url: "https://github.com/usedesk/UseDesk.git", from: "1.0.0")
+.package(url: "https://github.com/usedesk/UseDeskSPM.git", from: "1.0.0")
 ```
 
 ## Подключение SDK 
