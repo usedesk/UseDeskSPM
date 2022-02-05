@@ -37,6 +37,7 @@
 | Note | String | Текст заметки |
 | AdditionalFields | [Int : String] | Массив дополнительный полей в формате - id : "значение". Для текстовых полей значение - строка, для списка - строка с точно совпадающим значением списка, для флага - строка "false" или "true" |
 | AdditionalNestedFields | [[Int : String]] | Массив допл полей типа вложенный список. Каждый подмассив представляет один вложенный список. Формат фложенного списка - [id1: "значение", id2 : "значение", id3 : "значение"], где id1, id2, id3 идентификаторы значений по уровням вложенности |
+| AdditionalId | String | Дополнительный идентификатор клиента |
 | Token | String | Подпись, однозначно идентифицирующая пользователя и его чат на любых устройствах для сохранения истории переписки. (генерирует наша система,  ограничение не меньше 64 символа) |
 | isSaveTokensInUserDefaults | Bool | Сохранять ли токен UserDefaults |
 
@@ -65,6 +66,7 @@ class ViewController: UIViewController {
             note: "Note text",
             additionalFields: [1 : "value"],
             additionalNestedFields: [[1 : "value1", 2 : "value2", 3 : "value3"]],
+            additional_id: "additional_id",
             token: "Token",
             connectionStatus: { success, feedbackStatus, token in
             print(self.usedesk.historyMess)
