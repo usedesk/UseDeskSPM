@@ -63,9 +63,9 @@ public class UDNetworkManager {
         }, errorBlock: errorBlock)
     }
     
-    public func sendFile(url: String, fileName: String, data: Data, messageId: String? = nil, connectBlock: @escaping UDSConnectBlock, errorBlock: @escaping UDSErrorBlock) {
+    public func sendFile(url: String, fileName: String, data: Data, messageId: String? = nil, progressBlock: UDSProgressUploadBlock? = nil, connectBlock: @escaping UDSConnectBlock, errorBlock: @escaping UDSErrorBlock) {
         if let currentToken = token {
-            DispatchQueue.global(qos: .utility).async { 
+            DispatchQueue.global(qos: .utility).async {
                 AF.upload(multipartFormData: { multipartFormData in
                     multipartFormData.append(currentToken.data(using: String.Encoding.utf8)!, withName: "chat_token")
                     multipartFormData.append(data, withName: "file", fileName: fileName)
@@ -74,7 +74,9 @@ public class UDNetworkManager {
                             multipartFormData.append(messageId!.data(using: String.Encoding.utf8)!, withName: "message_id")
                         }
                     }
-                }, to: url).responseJSON { (responseJSON) in
+                }, to: url).uploadProgress(closure: { (progress) in
+                    progressBlock?(progress)
+                }).responseJSON { (responseJSON) in
                     switch responseJSON.result {
                     case .success(let value):
                         let valueJSON = value as! [String:Any]
