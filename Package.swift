@@ -14,7 +14,6 @@ let package = Package (
      dependencies: [
         .package(name: "SocketIO", url: "https://github.com/socketio/socket.io-client-swift", from: "16.0.0"),
          .package(url: "https://github.com/Alamofire/Alamofire", from: "5.0.0"),
-         .package(url: "https://github.com/sendyhalim/Swime", from: "3.0.0"),
          .package(url: "https://github.com/johnxnguyen/Down", from: "0.11.0")
      ],
      targets: [
@@ -23,7 +22,6 @@ let package = Package (
              dependencies: [
                  "Alamofire",
                  "SocketIO",
-                 "Swime",
                  "Down"
              ],
              path: "Sources/UseDesk"

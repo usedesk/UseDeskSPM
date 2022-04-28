@@ -60,5 +60,6 @@ import Alamofire
         case .emptyTokenAPI:
             return "Empty api_token"
         }
+        
     }
 }
