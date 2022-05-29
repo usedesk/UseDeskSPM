@@ -25,18 +25,19 @@ let UD_STATUS_SEND_SUCCEED = 3
 let UD_AUDIOSTATUS_STOPPED = 1
 let UD_AUDIOSTATUS_PLAYING = 2
 
-public typealias UDSStartBlock = (Bool, UDFeedbackStatus, String) -> Void
-public typealias UDSBaseBlock = (Bool, [UDBaseCollection]?) -> Void
-public typealias UDSArticleBlock = (Bool, UDArticle?) -> Void
-public typealias UDSArticleSearchBlock = (Bool, UDSearchArticle?) -> Void
-public typealias UDSConnectBlock = (Bool) -> Void
-public typealias UDSNewMessageBlock = (UDMessage?) -> Void
-public typealias UDSErrorSocketBlock = ([Any]?) -> Void
-public typealias UDSErrorBlock = (UDError, String?) -> Void
-public typealias UDSFeedbackMessageBlock = (UDMessage?) -> Void
-public typealias UDSFeedbackAnswerMessageBlock = (Bool) -> Void
-public typealias UDSVoidBlock = () -> Void
-public typealias UDSProgressUploadBlock = (Progress) -> Void
+public typealias UDStartBlock = (Bool, UDFeedbackStatus, String) -> Void
+public typealias UDBaseBlock = (Bool, [UDBaseCollection]?) -> Void
+public typealias UDArticleBlock = (Bool, UDArticle?) -> Void
+public typealias UDArticleSearchBlock = (Bool, UDSearchArticle?) -> Void
+public typealias UDConnectBlock = (Bool) -> Void
+public typealias UDNewMessageBlock = (UDMessage?) -> Void
+public typealias UDNewMessagesBlock = ([UDMessage]) -> Void
+public typealias UDErrorBlock = (UDError, String?) -> Void
+public typealias UDFeedbackMessageBlock = (UDMessage?) -> Void
+public typealias UDFeedbackAnswerMessageBlock = (Bool) -> Void
+public typealias UDVoidBlock = () -> Void
+public typealias UDProgressUploadBlock = (Progress) -> Void
+public typealias UDValidModelBlock = (UseDeskModel) -> Void
 
 @objc public enum UDFeedbackStatus: Int {
     case null
@@ -51,10 +52,6 @@ public typealias UDSProgressUploadBlock = (Progress) -> Void
     var isOpenFeedbackForm: Bool {
         return self == .feedbackForm || self == .feedbackFormAndChat
     }
-}
-
-protocol UDUISetupable {
-    func setupUI()
 }
 
 @objc public protocol UDStorage {
@@ -72,21 +69,29 @@ public struct UseDeskModel {
     var urlWithoutPort = ""
     var urlAPI = ""
     var knowledgeBaseID = ""
+    var knowledgeBaseSectionId: Int = 0
+    var knowledgeBaseCategoryId: Int = 0
+    var knowledgeBaseArticleId: Int = 0
+    var baseSections: [UDBaseCollection] = []
     var api_token = ""
     var port = ""
     var name = ""
-    var operatorName = ""
+    var avatar: Data? = nil
+    var nameOperator = ""
+    var nameChat = ""
     var firstMessage = ""
     var note = ""
     var token = ""
     var additional_id = ""
+    var localeIdentifier = ""
     var additionalFields: [Int : String] = [:]
     var additionalNestedFields: [[Int : String]] = []
     var idLoadingMessages: [String] = []
     var isSaveTokensInUserDefaults = true
+    var isOnlyKnowledgeBase = false
     // Lolace
     var locale: [String:String] = [:]
-
+    
     func stringFor(_ key: String) -> String {
         if let word = locale[key] {
             return word

@@ -13,6 +13,7 @@ enum UDTypeSourceFile: String {
 }
 
 public class UDFile: NSObject, Codable {
+    @objc public var id: Int = 0
     @objc public var type = ""
     @objc public var name = ""
     @objc public var content = ""

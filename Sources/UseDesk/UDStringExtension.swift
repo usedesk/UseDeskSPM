@@ -37,7 +37,7 @@ extension String {
         let systemFont = UIFont.systemFont(ofSize: UIFont.systemFontSize)
         let font: UIFont = (attributes?[.font] as? UIFont) ?? systemFont
         
-        if (attributes == nil) {
+        if attributes == nil {
             attributes = [.font : font]
         }
         
@@ -50,12 +50,12 @@ extension String {
         let drawingRect = attributedString.boundingRect(with: availableSize, options: options, context: nil)
         sizeWithAttributedString = drawingRect.size
         
-        if (!usesFontLeading) {
+        if !usesFontLeading {
             return sizeWithAttributedString
         }
         
         // Leading causes incorrect calculation for text layer
-        if (usesFontLeading) {
+        if usesFontLeading {
             let linesCount = ceil(sizeWithAttributedString.height / singleSymbolHeight)
             let totalHeight = ceil(sizeWithAttributedString.height + abs(font.leading) * linesCount)
             sizeWithAttributedString.height = totalHeight
@@ -89,6 +89,28 @@ extension String {
             }
         }
         return links
+    }
+    
+    func udRemoveSubstrings(with substrings: [String]) -> String {
+        var newString = self
+        substrings.forEach { string in
+            newString = newString.replacingOccurrences(of: string, with: "", options: String.CompareOptions.regularExpression, range: nil)
+        }
+        return newString
+    }
+    
+    func udRemoveFirstSpaces() -> String {
+        return self.udRemoveFirstSymbol(with: " ")
+    }
+    
+    func udRemoveFirstSymbol(with symbol: Character) -> String {
+        var resultString = self
+        var isNeedRemove = resultString.first == symbol ? true : false
+        while isNeedRemove {
+            resultString.removeFirst()
+            isNeedRemove = resultString.first == symbol ? true : false
+        }
+        return resultString
     }
     
     mutating func udRemoveMarkdownUrlsAndReturnLinks() -> [String] {

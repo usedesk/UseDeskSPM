@@ -8,22 +8,45 @@ import Foundation
 
 public class UDValidationManager {
     
-    class func validateInitionalsFields(companyID: String, chanelId: String, urlAPI: String? = nil, knowledgeBaseID: String? = nil, api_token: String? = nil, email: String? = nil, phone: String? = nil, url: String, urlToSendFile: String? = nil, port: String? = nil, name: String? = nil, operatorName: String? = nil, firstMessage: String? = nil, note: String? = nil, additionalFields: [Int : String] = [:], additionalNestedFields: [[Int : String]] = [], additional_id: String? = nil, token: String? = nil, localeIdentifier: String? = nil, customLocale: [String : String]? = nil, isSaveTokensInUserDefaults: Bool = true, errorStatus errorBlock: @escaping UDSErrorBlock) -> (UseDeskModel?) {
-        
+    class func validateInitionalsFields(companyID: String? = nil, chanelId: String? = nil, url: String? = nil, port: String? = nil, urlAPI: String? = nil, api_token: String? = nil, urlToSendFile: String? = nil, knowledgeBaseID: String? = nil, knowledgeBaseSectionId: NSNumber? = nil, knowledgeBaseCategoryId: NSNumber? = nil, knowledgeBaseArticleId: NSNumber? = nil, name: String? = nil, email: String? = nil, phone: String? = nil, avatar: Data? = nil, token: String? = nil, additional_id: String? = nil, note: String? = nil, additionalFields: [Int : String] = [:], additionalNestedFields: [[Int : String]] = [], nameOperator: String? = nil, firstMessage: String? = nil, localeIdentifier: String? = nil, customLocale: [String : String]? = nil, isSaveTokensInUserDefaults: Bool = true, isOnlyKnowledgeBase : Bool = false, validModelBlock: @escaping UDValidModelBlock, errorStatus errorBlock: @escaping UDErrorBlock) {
+       
         var model = UseDeskModel()
         
         model.additionalFields = additionalFields
         model.additionalNestedFields = additionalNestedFields
         
-        model.companyID = companyID
-        guard chanelId.trimmingCharacters(in: .whitespaces).count > 0 && Int(chanelId) != nil else {
-            errorBlock(.chanelIdError, UDError.chanelIdError.description)
-            return nil
+        if companyID != nil {
+            model.companyID = companyID!
         }
-        model.chanelId = chanelId
-        if knowledgeBaseID != nil {
-            model.knowledgeBaseID = knowledgeBaseID!
+        
+        if chanelId != nil {
+            guard chanelId!.trimmingCharacters(in: .whitespaces).count > 0 && Int(chanelId!) != nil else {
+                errorBlock(.chanelIdError, UDError.chanelIdError.description)
+                return
+            }
+            model.chanelId = chanelId!
         }
+        
+        if isOnlyKnowledgeBase {
+            if (knowledgeBaseID ?? "").count > 0 {
+                model.knowledgeBaseID = knowledgeBaseID ?? ""
+            } else {
+                errorBlock(.emptyKnowledgeBaseID, UDError.emptyKnowledgeBaseID.description)
+            }
+        } else {
+            model.knowledgeBaseID = knowledgeBaseID ?? ""
+        }
+        
+        if Int(truncating: knowledgeBaseArticleId ?? 0) > 0 {
+            model.knowledgeBaseArticleId = Int(truncating: knowledgeBaseArticleId!)
+        } else if Int(truncating: knowledgeBaseCategoryId ?? 0) > 0 {
+            model.knowledgeBaseCategoryId = Int(truncating: knowledgeBaseCategoryId!)
+        } else if Int(truncating: knowledgeBaseSectionId ?? 0) > 0 {
+            model.knowledgeBaseSectionId = Int(truncating: knowledgeBaseSectionId!)
+        }
+        
+        model.isOnlyKnowledgeBase = isOnlyKnowledgeBase
+        
         if api_token != nil {
             model.api_token = api_token!
         }
@@ -34,16 +57,18 @@ public class UDValidationManager {
             }
         }
         
-        guard isValidSite(path: url) else {
-            errorBlock(.urlError, UDError.urlError.description)
-            return nil
-        }
-        model.urlWithoutPort = url
-        
-        if isExistProtocol(url: url) {
-            model.url = "\(url):\(model.port)"
-        } else {
-            model.url = "https://" + "\(url):\(model.port)"
+        if url != nil {
+            guard isValidSite(path: url!) else {
+                errorBlock(.urlError, UDError.urlError.description)
+                return
+            }
+            model.urlWithoutPort = url!
+            
+            if isExistProtocol(url: url!) {
+                model.url = "\(url!):\(model.port)"
+            } else {
+                model.url = "https://" + "\(url!):\(model.port)"
+            }
         }
         
         if email != nil {
@@ -52,7 +77,7 @@ public class UDValidationManager {
                     model.email = email!
                 } else {
                     errorBlock(.emailError, UDError.emailError.description)
-                    return nil
+                    return
                 }
             }
         }
@@ -61,7 +86,7 @@ public class UDValidationManager {
             if urlToSendFile != "" {
                 guard isValidSite(path: urlToSendFile!) else {
                     errorBlock(.urlToSendFileError, UDError.urlToSendFileError.description)
-                    return nil
+                    return
                 }
                 if isExistProtocol(url: urlToSendFile!) {
                     model.urlToSendFile = urlToSendFile!
@@ -79,7 +104,7 @@ public class UDValidationManager {
                 }
                 guard isValidSite(path: urlAPIValue) else {
                     errorBlock(.urlAPIError, UDError.urlAPIError.description)
-                    return nil
+                    return
                 }
                 model.urlAPI = urlAPIValue
             }
@@ -90,20 +115,27 @@ public class UDValidationManager {
                 model.name = name!
             }
         }
-        if operatorName != nil {
-            if operatorName != "" {
-                model.operatorName = operatorName!
+        
+        if avatar != nil {
+            model.avatar = avatar!
+        }
+        
+        if nameOperator != nil {
+            if nameOperator != "" {
+                model.nameOperator = nameOperator!
             }
         }
+        
         if phone != nil {
             if phone != "" {
                 guard isValidPhone(phone: phone!) else {
                     errorBlock(.phoneError, UDError.phoneError.description)
-                    return nil
+                    return
                 }
                 model.phone = phone!
             }
         }
+        
         if firstMessage != nil {
             if firstMessage != "" {
                 model.firstMessage = firstMessage!
@@ -114,25 +146,28 @@ public class UDValidationManager {
                 model.note = note!
             }
         }
+        
         if additional_id != nil {
             if additional_id != "" {
                 model.additional_id = additional_id!
             }
         }
+        
         if token != nil {
             if token != "" {
                 if !token!.udIsValidToken() {
                     errorBlock(.tokenError, UDError.tokenError.description)
-                    return nil
+                    return
                 }
                 model.token = token!
             }
         }
+        
         model.isSaveTokensInUserDefaults = isSaveTokensInUserDefaults
-        return model
+        validModelBlock(model)
     }
     
-    class func isValidApiParameters(model: UseDeskModel, errorBlock: @escaping UDSErrorBlock) -> Bool {
+    class func isValidApiParameters(model: UseDeskModel, errorBlock: @escaping UDErrorBlock) -> Bool {
         if model.knowledgeBaseID == "" {
             errorBlock(.emptyKnowledgeBaseID, UDError.emptyKnowledgeBaseID.description)
             return false

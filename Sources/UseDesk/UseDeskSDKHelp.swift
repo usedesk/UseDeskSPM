@@ -8,8 +8,8 @@ class UseDeskSDKHelp {
     class func config_CompanyID(_ companyID: String, chanelId: String, email: String, phone: String?, name: String?, url: String?, token: String?) -> [SocketData]? {
         let payload = [
             "sdk" : "iOS",
-            "type" : "sdk",
-            "version" : "2.3.0"
+            "type" : "sdk_spm",
+            "version" : "1.1.0"
         ]
         var dic = [
             "type" : "@@server/chat/INIT",
