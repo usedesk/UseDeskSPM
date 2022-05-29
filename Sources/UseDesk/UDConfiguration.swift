@@ -69,9 +69,6 @@ public struct UseDeskModel {
     var urlWithoutPort = ""
     var urlAPI = ""
     var knowledgeBaseID = ""
-    var knowledgeBaseSectionId: Int = 0
-    var knowledgeBaseCategoryId: Int = 0
-    var knowledgeBaseArticleId: Int = 0
     var baseSections: [UDBaseCollection] = []
     var api_token = ""
     var port = ""
@@ -88,7 +85,6 @@ public struct UseDeskModel {
     var additionalNestedFields: [[Int : String]] = []
     var idLoadingMessages: [String] = []
     var isSaveTokensInUserDefaults = true
-    var isOnlyKnowledgeBase = false
     // Lolace
     var locale: [String:String] = [:]
     

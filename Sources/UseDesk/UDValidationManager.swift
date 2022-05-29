@@ -8,7 +8,7 @@ import Foundation
 
 public class UDValidationManager {
     
-    class func validateInitionalsFields(companyID: String? = nil, chanelId: String? = nil, url: String? = nil, port: String? = nil, urlAPI: String? = nil, api_token: String? = nil, urlToSendFile: String? = nil, knowledgeBaseID: String? = nil, knowledgeBaseSectionId: NSNumber? = nil, knowledgeBaseCategoryId: NSNumber? = nil, knowledgeBaseArticleId: NSNumber? = nil, name: String? = nil, email: String? = nil, phone: String? = nil, avatar: Data? = nil, token: String? = nil, additional_id: String? = nil, note: String? = nil, additionalFields: [Int : String] = [:], additionalNestedFields: [[Int : String]] = [], nameOperator: String? = nil, firstMessage: String? = nil, localeIdentifier: String? = nil, customLocale: [String : String]? = nil, isSaveTokensInUserDefaults: Bool = true, isOnlyKnowledgeBase : Bool = false, validModelBlock: @escaping UDValidModelBlock, errorStatus errorBlock: @escaping UDErrorBlock) {
+    class func validateInitionalsFields(companyID: String? = nil, chanelId: String? = nil, url: String? = nil, port: String? = nil, urlAPI: String? = nil, api_token: String? = nil, urlToSendFile: String? = nil, knowledgeBaseID: String? = nil, name: String? = nil, email: String? = nil, phone: String? = nil, avatar: Data? = nil, token: String? = nil, additional_id: String? = nil, note: String? = nil, additionalFields: [Int : String] = [:], additionalNestedFields: [[Int : String]] = [], nameOperator: String? = nil, firstMessage: String? = nil, localeIdentifier: String? = nil, customLocale: [String : String]? = nil, isSaveTokensInUserDefaults: Bool = true, validModelBlock: @escaping UDValidModelBlock, errorStatus errorBlock: @escaping UDErrorBlock) {
        
         var model = UseDeskModel()
         
@@ -27,25 +27,7 @@ public class UDValidationManager {
             model.chanelId = chanelId!
         }
         
-        if isOnlyKnowledgeBase {
-            if (knowledgeBaseID ?? "").count > 0 {
-                model.knowledgeBaseID = knowledgeBaseID ?? ""
-            } else {
-                errorBlock(.emptyKnowledgeBaseID, UDError.emptyKnowledgeBaseID.description)
-            }
-        } else {
-            model.knowledgeBaseID = knowledgeBaseID ?? ""
-        }
-        
-        if Int(truncating: knowledgeBaseArticleId ?? 0) > 0 {
-            model.knowledgeBaseArticleId = Int(truncating: knowledgeBaseArticleId!)
-        } else if Int(truncating: knowledgeBaseCategoryId ?? 0) > 0 {
-            model.knowledgeBaseCategoryId = Int(truncating: knowledgeBaseCategoryId!)
-        } else if Int(truncating: knowledgeBaseSectionId ?? 0) > 0 {
-            model.knowledgeBaseSectionId = Int(truncating: knowledgeBaseSectionId!)
-        }
-        
-        model.isOnlyKnowledgeBase = isOnlyKnowledgeBase
+        model.knowledgeBaseID = knowledgeBaseID ?? ""
         
         if api_token != nil {
             model.api_token = api_token!
