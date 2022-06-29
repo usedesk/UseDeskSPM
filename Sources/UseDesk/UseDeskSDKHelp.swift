@@ -5,11 +5,12 @@ import Foundation
 import SocketIO
 
 class UseDeskSDKHelp {
-    class func config_CompanyID(_ companyID: String, chanelId: String, email: String, phone: String?, name: String?, url: String?, token: String?) -> [SocketData]? {
-        let payload = [
+    class func config_CompanyID(_ companyID: String, chanelId: String, email: String, phone: String?, name: String?, url: String?, countMessagesOnInit: Int, token: String?) -> [SocketData]? {
+        let payload: [String : Any] = [
             "sdk" : "iOS",
             "type" : "sdk_spm",
-            "version" : "1.1.0"
+            "version" : "1.2.0",
+            "message_limit" : countMessagesOnInit
         ]
         var dic = [
             "type" : "@@server/chat/INIT",

@@ -8,7 +8,7 @@ import Foundation
 
 public class UDValidationManager {
     
-    class func validateInitionalsFields(companyID: String? = nil, chanelId: String? = nil, url: String? = nil, port: String? = nil, urlAPI: String? = nil, api_token: String? = nil, urlToSendFile: String? = nil, knowledgeBaseID: String? = nil, name: String? = nil, email: String? = nil, phone: String? = nil, avatar: Data? = nil, token: String? = nil, additional_id: String? = nil, note: String? = nil, additionalFields: [Int : String] = [:], additionalNestedFields: [[Int : String]] = [], nameOperator: String? = nil, firstMessage: String? = nil, localeIdentifier: String? = nil, customLocale: [String : String]? = nil, isSaveTokensInUserDefaults: Bool = true, validModelBlock: @escaping UDValidModelBlock, errorStatus errorBlock: @escaping UDErrorBlock) {
+    class func validateInitionalsFields(companyID: String? = nil, chanelId: String? = nil, url: String? = nil, port: String? = nil, urlAPI: String? = nil, api_token: String? = nil, urlToSendFile: String? = nil, knowledgeBaseID: String? = nil, name: String? = nil, email: String? = nil, phone: String? = nil, avatar: Data? = nil, token: String? = nil, additional_id: String? = nil, note: String? = nil, additionalFields: [Int : String] = [:], additionalNestedFields: [[Int : String]] = [], nameOperator: String? = nil, firstMessage: String? = nil, countMessagesOnInit: NSNumber? = nil, localeIdentifier: String? = nil, customLocale: [String : String]? = nil, isSaveTokensInUserDefaults: Bool = true, validModelBlock: @escaping UDValidModelBlock, errorStatus errorBlock: @escaping UDErrorBlock) {
        
         var model = UseDeskModel()
         
@@ -123,6 +123,17 @@ public class UDValidationManager {
                 model.firstMessage = firstMessage!
             }
         }
+        
+        if countMessagesOnInit != nil {
+            guard Int(truncating: countMessagesOnInit!) >= 10 else {
+                errorBlock(.countMessagesOnInitError, UDError.countMessagesOnInitError.description)
+                return
+            }
+            model.countMessagesOnInit = Int(truncating: countMessagesOnInit!)
+        } else {
+            model.countMessagesOnInit = UD_LIMIT_PAGINATION_DEFAULT
+        }
+        
         if note != nil {
             if note != "" {
                 model.note = note!
