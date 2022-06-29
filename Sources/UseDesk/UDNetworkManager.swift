@@ -14,6 +14,7 @@ public class UDNetworkManager {
     public weak var socket: SocketIOClient?
     private var isAuthInited = false
     private var isSendedAdditionalField = false
+    private var isAuthSuccess = false
     private var token: String? {
         return model.token != "" ? model.token : loadToken()
     }
@@ -397,7 +398,18 @@ public class UDNetworkManager {
                 self?.save(token: token)
             }, setClientBlock: { [weak self] in
                 guard let wSelf = self else {return}
-                wSelf.socket?.emit("dispatch", with: UseDeskSDKHelp.dataClient(wSelf.model.email, phone: wSelf.model.phone, name: wSelf.model.name, note: wSelf.model.note, token: wSelf.token ?? "", additional_id: wSelf.model.additional_id)!, completion: nil)
+                wSelf.socket?.emit("dispatch", with: UseDeskSDKHelp.dataClient(wSelf.model.email, phone: wSelf.model.phone, name: wSelf.model.name, note: wSelf.model.note, token: wSelf.token ?? "", additional_id: wSelf.model.additional_id)!) { [weak self] in
+                    if self?.isAuthSuccess ?? false {
+                        if wSelf.model.firstMessage != "" {
+                            let id = wSelf.newIdLoadingMessages()
+                            wSelf.model.idLoadingMessages.append(id)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                                wSelf.sendMessage(wSelf.model.firstMessage, messageId: id)
+                                wSelf.model.firstMessage = ""
+                            }
+                        }
+                    }
+                }
                 if let avatar = wSelf.model.avatar {
                     wSelf.sendAvatarClient(avatarData: avatar)
                 }
@@ -412,17 +424,11 @@ public class UDNetworkManager {
             } else if callbackSettings.type == .always_and_chat {
                 startBlock(false, .feedbackFormAndChat, wSelf.model.token)
             } else {
-                let isAuthSuccess = UDSocketResponse.isAddInit(data)
+                wSelf.isAuthSuccess = UDSocketResponse.isAddInit(data)
                 
-                if isAuthSuccess {
-                    if wSelf.model.firstMessage != "" {
-                        let id = wSelf.newIdLoadingMessages()
-                        wSelf.model.idLoadingMessages.append(id)
-                        wSelf.sendMessage(wSelf.model.firstMessage, messageId: id)
-                        wSelf.model.firstMessage = ""
-                    }
+                if wSelf.isAuthSuccess {
                     wSelf.isAuthInited = true
-                    startBlock(isAuthSuccess, .never, wSelf.token ?? "")
+                    startBlock(wSelf.isAuthSuccess, .never, wSelf.token ?? "")
                 }
                 
                 UDSocketResponse.actionFeedbackAnswer(data, feedbackAnswerMessageBlock: feedbackAnswerMessageBlock)
