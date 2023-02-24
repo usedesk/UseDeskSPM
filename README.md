@@ -97,7 +97,7 @@ usedesk.start(
 
 ## Documentation
 
-Methods for working with the SDK, customization of elements, and errors are described in our documentation: [http://sdk.usedocs.com](http://sdk.usedocs.com/)
+Methods for working with the SDK, customization of elements, and errors are described in our documentation: [https://sdk.usedocs.com](https://sdk.usedocs.com/)
 
 ## Authors
 
