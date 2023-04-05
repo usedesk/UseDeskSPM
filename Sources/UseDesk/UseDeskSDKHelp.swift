@@ -8,8 +8,8 @@ class UseDeskSDKHelp {
     class func config_CompanyID(_ companyID: String, chanelId: String, email: String, phone: String?, name: String?, url: String?, countMessagesOnInit: Int, token: String?) -> [SocketData]? {
         let payload: [String : Any] = [
             "sdk" : "iOS",
-            "type" : "sdk_spm",
-            "version" : "1.2.0",
+            "type" : "sdk",
+            "version" : "1.3.0",
             "message_limit" : countMessagesOnInit
         ]
         var dic = [

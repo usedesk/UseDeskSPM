@@ -10,7 +10,7 @@ Also available in [Russian](README_RU.md)
 ### Swift Package Manager
 
 ```swift
-.package(url: "https://github.com/usedesk/UseDeskSPM.git", from: "1.2.0")
+.package(url: "https://github.com/usedesk/UseDeskSPM.git", from: "1.3.0")
 ```
 
 ## Initializing SDK 
@@ -33,6 +33,7 @@ Where * — required parameter
 | **Email** | String | **Client email** |
 | **Phone** | String | **Client phone** |
 | **Avatar** | Data? | **Client avatar** |
+| **AvatarUrl** | URL? | **URL of client avatar image**<br/>Avatar parameter has higher priority|
 | **Token** | String | **A unique token that uniquely identifies the user and his conversation**<br/>The token is provided in the callback after the initialization of the chat and is linked to the mail-phone-user name.<br/>To identify different users on the same device, you must store and pass the received token to the initialization method |
 | **AdditionalId** | String | **Additional customer ID** |
 | **Note** | String | **Text of note** |

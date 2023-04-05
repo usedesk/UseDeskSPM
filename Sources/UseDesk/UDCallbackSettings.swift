@@ -1,7 +1,5 @@
 //
 //  UDCallbackSettings.swift
-//  UseDesk_SDK_Swift
-
 
 import Foundation
 

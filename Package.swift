@@ -13,8 +13,9 @@ let package = Package (
      ],
      dependencies: [
         .package(name: "SocketIO", url: "https://github.com/socketio/socket.io-client-swift", from: "16.0.0"),
-         .package(url: "https://github.com/Alamofire/Alamofire", from: "5.0.0"),
-         .package(url: "https://github.com/johnxnguyen/Down", from: "0.11.0")
+        .package(url: "https://github.com/Alamofire/Alamofire", from: "5.0.0"),
+        .package(url: "https://github.com/bmoliveira/MarkdownKit", from: "1.7.1"),
+        .package(url: "https://github.com/scinfu/SwiftSoup", from: "2.4.3")
      ],
      targets: [
          .target(
@@ -22,7 +23,8 @@ let package = Package (
              dependencies: [
                  "Alamofire",
                  "SocketIO",
-                 "Down"
+                 "MarkdownKit",
+                 "SwiftSoup"
              ],
              path: "Sources/UseDesk"
          )

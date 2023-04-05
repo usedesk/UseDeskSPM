@@ -1,12 +1,9 @@
 //
 //  UDSocketResponse.swift
-//  UseDesk_SDK_Swift
-//
-//
 
 import Foundation
-import Down
-import UIKit
+import MarkdownKit
+import SwiftSoup
 
 class UDSocketResponse {
     
@@ -163,9 +160,8 @@ class UDSocketResponse {
         }
     }
     
-    public class func actionAddMessage(_ data: [Any]?, newMessageBlock: UDNewMessageBlock?, feedbackMessageBlock: UDFeedbackMessageBlock?, sendAdditionalFieldsBlock: () -> Void, isSendedAdditionalField: Bool,  model: UseDeskModel) {
+    public class func actionAddMessage(_ data: [Any]?, newMessageBlock: UDMessageBlock?, feedbackMessageBlock: UDFeedbackMessageBlock?, sendAdditionalFieldsBlock: () -> Void, isSendedAdditionalField: Bool,  model: UseDeskModel) {
         let dicServer = data?[0] as? [AnyHashable : Any]
-        
         let type = dicServer?["type"] as? String
         if type == nil {
             return
@@ -180,15 +176,13 @@ class UDSocketResponse {
             var m: UDMessage? = nil
             var messageFile: UDMessage? = nil
             var messagesImageLink: [UDMessage] = []
-            
-            var mutableAttributedString: NSMutableAttributedString? = nil
             var textWithoutLinkImage: String? = nil
             var linksImage: [String] = []
             if var text = message!["text"] as? String {
-                (linksImage, textWithoutLinkImage, mutableAttributedString) = parseText(text)
-                for link in linksImage {
-                    text = text.replacingOccurrences(of: link, with: "")
-                    if let messageImageLink = UDSocketResponse.parseFileMessageDic(message, withImageUrl: link) {
+                (linksImage, textWithoutLinkImage) = parseText(text)
+                for index in 0..<linksImage.count {
+                    text = text.replacingOccurrences(of: linksImage[index], with: "")
+                    if let messageImageLink = UDSocketResponse.parseFileMessageDic(message, withImageUrl: linksImage[index], numberImageUrl: index) {
                         messagesImageLink.append(messageImageLink)
                     }
                 }
@@ -196,7 +190,7 @@ class UDSocketResponse {
             if (message!["file"] as? [AnyHashable : Any] ) != nil {
                 messageFile = parseFileMessageDic(message)
             }
-            m = parseMessageDic(message, textWithoutLinkImage: textWithoutLinkImage, attributedString: mutableAttributedString, model: model)
+            m = parseMessageDic(message, textWithoutLinkImage: textWithoutLinkImage, model: model)
             
             var isAddMessage = false
             if m != nil {
@@ -237,14 +231,13 @@ class UDSocketResponse {
             var messageFile: UDMessage? = nil
             var messagesImageLink: [UDMessage] = []
             if let message = mess as? [AnyHashable : Any] {
-                var mutableAttributedString: NSMutableAttributedString? = nil
                 var textWithoutLinkImage: String? = nil
                 var linksImage: [String] = []
                 if var text = message["text"] as? String {
-                    (linksImage, textWithoutLinkImage, mutableAttributedString) = parseText(text)
-                    for link in linksImage {
-                        text = text.replacingOccurrences(of: link, with: "")
-                        if let messageImageLink = UDSocketResponse.parseFileMessageDic(message, withImageUrl: link) {
+                    (linksImage, textWithoutLinkImage) = parseText(text)
+                    for index in 0..<linksImage.count {
+                        text = text.replacingOccurrences(of: linksImage[index], with: "")
+                        if let messageImageLink = UDSocketResponse.parseFileMessageDic(message, withImageUrl: linksImage[index], numberImageUrl: index) {
                             messagesImageLink.append(messageImageLink)
                         }
                     }
@@ -252,7 +245,7 @@ class UDSocketResponse {
                 if (message["file"] as? [AnyHashable : Any] ) != nil {
                     messageFile = UDSocketResponse.parseFileMessageDic(message)
                 }
-                m = UDSocketResponse.parseMessageDic(message, textWithoutLinkImage: textWithoutLinkImage, attributedString: mutableAttributedString, model: model)
+                m = UDSocketResponse.parseMessageDic(message, textWithoutLinkImage: textWithoutLinkImage, model: model)
             }
             if m != nil && m!.text != "​" {
                 messages.append(m!)
@@ -268,9 +261,9 @@ class UDSocketResponse {
     }
     
     // MARK: - Private Methods
-    private class func parseFileMessageDic(_ mess: [AnyHashable : Any]?, withImageUrl imageUrl: String? = nil) -> UDMessage? {
+    private class func parseFileMessageDic(_ mess: [AnyHashable : Any]?, withImageUrl imageUrl: String? = nil, numberImageUrl: Int? = nil) -> UDMessage? {
         let m = UDMessage(text: "", incoming: false)
-        
+        m.statusSend = UD_STATUS_SEND_SUCCEED
         let createdAt = mess?["createdAt"] as? String ?? ""
         let dateFormatter = DateFormatter()
         dateFormatter.locale = .current
@@ -300,9 +293,8 @@ class UDSocketResponse {
             }
         }
         if let payload = mess?["payload"] as? [AnyHashable : Any] {
-            let avatar = payload["avatar"]
-            if avatar != nil {
-                m.avatar = payload["avatar"] as! String
+            if let avatar = payload["avatar"] as? String {
+                m.avatar = avatar
             }
             if payload["message_id"] != nil {
                 m.loadingMessageId = payload["message_id"] as? String ?? ""
@@ -310,20 +302,31 @@ class UDSocketResponse {
         }
         m.id = mess?["id"] as? Int ?? 0
         let fileDic = mess?["file"] as? [AnyHashable : Any]
-        if imageUrl != nil {
-            if imageUrl!.contains(".png") || imageUrl!.contains(".gif") || imageUrl!.contains(".jpg") || imageUrl!.contains(".jpeg") {
+        if let url = imageUrl, let numberImage = numberImageUrl {
+            let imageUrlLowercased = imageUrl!.lowercased()
+            if imageUrlLowercased.contains(".png") || imageUrlLowercased.contains(".gif") || imageUrlLowercased.contains(".jpg") || imageUrlLowercased.contains(".jpeg") || imageUrlLowercased.contains(".heic") || imageUrlLowercased.contains(".webp") {
                 m.type = UD_TYPE_PICTURE
                 let file = UDFile()
-                file.content = imageUrl!
+                file.urlFile = url
+                file.id = m.id + numberImage
                 m.file = file
             } else {
                 return nil
             }
         } else if fileDic != nil {
             let file = UDFile()
-            file.content = fileDic?["content"] as! String
+            file.urlFile = fileDic?["content"] as! String
             file.name = fileDic?["name"] as! String
-            file.type = fileDic?["type"] as! String
+            let typeFileString = fileDic?["type"] as! String
+            file.typeString = typeFileString
+            switch typeFileString {
+            case "image":
+                file.type = .image
+            case "video":
+                file.type = .video
+            default:
+                file.type = .file
+            }
             file.size = fileDic?["size"] as? String ?? ""
             file.id = fileDic?["fileId"] as? Int ?? 0
             m.file = file
@@ -335,12 +338,12 @@ class UDSocketResponse {
             if (fileDic?["fullLink"] as? String ?? "") != "" {
                 type = URL.init(string: fileDic?["fullLink"] as? String ?? "")?.pathExtension ?? ""
             }
-            if file.type.contains("image") || isImage(of: type) || isImage(of: file.type) {
+            if typeFileString.contains("image") || isImage(of: type) || isImage(of: typeFileString) {
                 m.type = UD_TYPE_PICTURE
-            } else if file.type.contains("video") || isVideo(of: type) || isVideo(of: file.type) {
+            } else if typeFileString.contains("video") || isVideo(of: type) || isVideo(of: typeFileString) {
                 m.type = UD_TYPE_VIDEO
                 m.file.typeExtension = type
-                file.type = "video"
+                file.type = .video
             } else {
                 m.type = UD_TYPE_File
             }
@@ -350,9 +353,9 @@ class UDSocketResponse {
         return m
     }
         
-    class func parseMessageDic(_ mess: [AnyHashable : Any]?, textWithoutLinkImage: String? = nil, attributedString: NSMutableAttributedString? = nil, model: UseDeskModel) -> UDMessage? {
+    class func parseMessageDic(_ mess: [AnyHashable : Any]?, textWithoutLinkImage: String? = nil, model: UseDeskModel) -> UDMessage? {
         let m = UDMessage(text: "", incoming: false)
-        
+        m.statusSend = UD_STATUS_SEND_SUCCEED
         let createdAt = mess?["createdAt"] as? String ?? ""
         let dateFormatter = DateFormatter()
         dateFormatter.locale = .current
@@ -384,9 +387,9 @@ class UDSocketResponse {
             }
         }
         m.text = textWithoutLinkImage != nil ? textWithoutLinkImage! : mess?["text"] as? String ?? ""
-        m.attributedString = attributedString
         if m.incoming {
-            let stringsFromButtons = parseMessageFromButtons(text: m.attributedString != nil ? m.attributedString!.string : m.text)
+            //Buttons
+            let stringsFromButtons = parseMessageFromButtons(text: m.text)
             for stringFromButton in stringsFromButtons {
                 let button = buttonFromString(stringButton: stringFromButton)
                 var textButton = ""
@@ -397,11 +400,7 @@ class UDSocketResponse {
                         textButton += button!.title
                     }
                 }
-                if m.attributedString != nil {
-                    m.attributedString!.mutableString.replaceOccurrences(of: stringFromButton, with: textButton, options: .caseInsensitive, range: NSRange(location: 0, length: m.attributedString!.length))
-                } else {
-                    m.text = m.text.replacingOccurrences(of: stringFromButton, with: textButton)
-                }
+                m.text = m.text.replacingOccurrences(of: stringFromButton, with: textButton)
             }
             for index in 0..<m.buttons.count {
                 let invertIndex = (m.buttons.count - 1) - index
@@ -409,17 +408,29 @@ class UDSocketResponse {
                     m.text = m.buttons[invertIndex].title + " " + m.text
                 }
             }
+            //Forms
+            let (textWithForms, forms) = UDFormMessageManager.parseForms(from: m.text)
+            if forms.count > 0 {
+                m.text = textWithForms.udRemoveFirstAndLastLineBreaksAndSpaces()
+                m.forms = forms
+            }
+            //Name
             m.name = mess?["name"] as? String ?? ""
         }
-        
-        if m.text == "" && m.buttons.count == 0 {
+        m.text = m.text.udRemoveMultipleLineBreaks()
+        m.text = m.text.udRemoveFirstSymbol(with: "\n")
+        m.text = m.text.udRemoveLastSymbol(with: "\n")
+        if m.text == "" && m.buttons.count == 0 && m.forms.count == 0 {
             return nil
         }
         
+        if m.buttons.count != 0 || m.forms.count != 0 {
+            m.text += "\n"
+        }
+        
         if let payload = mess?["payload"] as? [AnyHashable : Any] {
-            let avatar = payload["avatar"]
-            if avatar != nil {
-                m.avatar = payload["avatar"] as! String
+            if let avatar = payload["avatar"] as? String {
+                m.avatar = avatar
             }
             if payload["csi"] != nil {
                 m.type = UD_TYPE_Feedback
@@ -455,7 +466,10 @@ class UDSocketResponse {
                     if (text[indexString] == "}") && (text[secondIndexString] == "}") {
                         characterArrayFromButton.append(text[secondIndexString])
                         isAddingButton = false
-                        stringsFromButton.append(String(characterArrayFromButton))
+                        let stringFromButton = String(characterArrayFromButton)
+                        if !UDFormMessageManager.isForm(string: stringFromButton) {
+                            stringsFromButton.append(stringFromButton)
+                        }
                         characterArrayFromButton = []
                     }
                 } else {
@@ -469,31 +483,43 @@ class UDSocketResponse {
         return stringsFromButton
     }
     
-    private class func parseText(_ textPars: String) -> ([String], String?, NSMutableAttributedString?) {
+    private class func parseText(_ textPars: String) -> ([String], String?) {
         var text = textPars
+        text.udConverDoubleLinks()
         text = text.udRemoveFirstSymbol(with: "\u{200b}")
-        text = text.udRemoveFirstSymbol(with: "\n")
         text = text.udRemoveLastSymbol(with: "\u{200b}")
+        text = text.udRemoveFirstSymbol(with: "\n")
+        text = text.udRemoveMultipleLineBreaks()
         text = text.udRemoveLastSymbol(with: "\n")
+        text.udConvertUrls()
+        if isHtml(text) {
+            do {
+                let doc: Document = try SwiftSoup.parse(text)
+                text = try doc.text()
+            } catch {}
+        }
         let textBeforeRemoveMarkdownUrls = text
-        var mutableAttributedString: NSMutableAttributedString? = nil
         var textWithoutLinkImage: String? = nil
         let linksImage = text.udRemoveMarkdownUrlsAndReturnLinks()
         textWithoutLinkImage = text
-        if text.count > 0 {
-            text = text.replacingOccurrences(of: "\n", with: "<№;%br>")
-            let down = Down(markdownString: text)
-            if let attributedString = try? down.toAttributedString() {
-                let paragraphStyle = NSMutableParagraphStyle()
-                mutableAttributedString = NSMutableAttributedString(attributedString: attributedString)
-                mutableAttributedString!.addAttributes([.paragraphStyle : paragraphStyle], range: NSRange(location: 0, length: mutableAttributedString!.length))
-                mutableAttributedString!.mutableString.replaceCharacters(in: NSRange(location: mutableAttributedString!.length - 1, length: 1), with: "")
-                mutableAttributedString!.mutableString.replaceOccurrences(of: "<№;%br>", with: "\n", options: .caseInsensitive, range: NSRange(location: 0, length: mutableAttributedString!.length))
-            } else if linksImage.count == 0 {
-                textWithoutLinkImage = textBeforeRemoveMarkdownUrls
+        if linksImage.count == 0 {
+            textWithoutLinkImage = textBeforeRemoveMarkdownUrls
+        }
+        return (linksImage, textWithoutLinkImage)
+    }
+    
+    private class func isHtml(_ string: String) -> Bool {
+        let htmlTags: [String] = ["<!--","<!DOCTYPE","<a","<abbr","<acronym","<address","<applet","<area","<article","<aside","<audio","<b","<base","<basefont","<bdi","<bdo","<big","<blockquote","<body","<br","<button","<canvas","<caption","<center","<cite","<code","<col","<colgroup","<data","<datalist","<dd","<del","<details","<dfn","<dialog","<dir","<div","<dl","<dt","<em","<embed","<fieldset","<figcaption","<figure","<font","<footer","<form","<frame","<frameset","<h1","<h2","<h3","<h4","<h5","<h6","<head","<header","<hr","<html","<i","<iframe","<img","<input","<ins","<kbd","<label","<legend","<li","<link","<main","<map","<mark","<menu","<menuitem","<meta","<meter","<nav","<noframes","<noscript","<object","<ol","<optgroup","<option","<output","<param","<picture","<pre","<progress","<q","<rp","<rt","<ruby","<s","<samp","<script","<section","<select","<small","<source","<span","<strike","<strong","<style","<sub","<summary","<sup","<svg","<table","<tbody","<td","<template","<textarea","<tfoot","<th","<thead","<time","<title","<tr","<track","<tt","<u","<ul","<var","<video","<wbr","<p","</p"]
+        var isHtml = false
+        var index = 0
+        while index < htmlTags.count && !isHtml {
+            if string.contains(htmlTags[index]) {
+                isHtml = true
+            } else {
+                index += 1
             }
         }
-        return (linksImage, textWithoutLinkImage, mutableAttributedString)
+        return isHtml
     }
     
     private class func buttonFromString(stringButton: String) -> UDMessageButton? {
@@ -536,7 +562,7 @@ class UDSocketResponse {
     
     private class func isImage(of type: String) -> Bool {
         let typeLowercased = type.lowercased()
-        let typesImage = ["gif", "xbm", "jpeg", "jpg", "pct", "bmpf", "ico", "tif", "tiff", "cur", "bmp", "png"]
+        let typesImage = ["gif", "xbm", "jpeg", "jpg", "pct", "bmpf", "ico", "tif", "tiff", "cur", "bmp", "png", "heic", "heif"]
         return typesImage.contains(typeLowercased)
     }
     

@@ -1,10 +1,7 @@
 //
 //  UDStringExtansion.swift
-//  UseDesk_SDK_Swift
-//
+
 import UIKit
-let udEmailRegex = "[A-Z0-9a-z]([A-Z0-9a-z._%+-]{0,30}[A-Z0-9a-z])?" + "@" + "([A-Z0-9a-z]([A-Z0-9a-z-]{0,30}[A-Z0-9a-z])?\\.){1,5}" + "[A-Za-z]{2,8}"
-let udEmailPredicate = NSPredicate(format: "SELF MATCHES %@", udEmailRegex)
 
 extension String {
     public var udIsContainEmoji: Bool {
@@ -59,6 +56,7 @@ extension String {
     }
     
     func udIsValidEmail() -> Bool {
+        let udEmailRegex = "[A-Z0-9a-z]([A-Z0-9a-z._%+-]{0,30}[A-Z0-9a-z])?" + "@" + "([A-Z0-9a-z]([A-Z0-9a-z-]{0,30}[A-Z0-9a-z])?\\.){1,5}" + "[A-Za-z]{2,8}"
         let range = NSRange(location: 0, length: self.count)
         let regex = try! NSRegularExpression(pattern: udEmailRegex)
         return regex.firstMatch(in: self, options: [], range: range) != nil
@@ -71,6 +69,16 @@ extension String {
         return true
     }
     
+    func udIsValidUrl() -> Bool {
+        let detector = try! NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+        if URL(string: self) != nil,
+           let match = detector.firstMatch(in: self, options: [], range: NSRange(location: 0, length: self.utf16.count)) {
+            return match.range.length == self.utf16.count
+        } else {
+            return false
+        }
+    }
+    
     func udGetLinksRange() -> [Range<String.Index>] {
         var links: [Range<String.Index>] = []
         let detector = try! NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
@@ -78,18 +86,64 @@ extension String {
 
         for match in matches {
             if let range = Range(match.range, in: self) {
-                links.append(range/*.nsRange(in: self)*/)
+                links.append(range)
             }
         }
         return links
     }
     
     func udRemoveSubstrings(with substrings: [String]) -> String {
-        var newString = self
+        var resultString = self
         substrings.forEach { string in
-            newString = newString.replacingOccurrences(of: string, with: "", options: String.CompareOptions.regularExpression, range: nil)
+            resultString = resultString.replacingOccurrences(of: string, with: "", options: String.CompareOptions.regularExpression, range: nil)
         }
-        return newString
+        return resultString
+    }
+    
+    func udRemoveMultipleLineBreaks() -> String {
+        guard self.contains("\n") else {return self}
+        var resultString = ""
+        var index = 0
+        while index < self.count - 1 {
+            if let searchStartIndex = self.index(startIndex, offsetBy: index, limitedBy: self.endIndex) {
+                if self[searchStartIndex] == "\n" {
+                    var endIndexMultipleLineBreaks = index + 1
+                    var isFindEndMultipleLineBreaks = false
+                    var countMultipleLineBreaks = 0
+                    var isEndSpace = false
+                    while endIndexMultipleLineBreaks < self.count - 1 && !isFindEndMultipleLineBreaks {
+                        if let searchEndIndexMultipleLineBreaks = self.index(startIndex, offsetBy: endIndexMultipleLineBreaks, limitedBy: self.endIndex),
+                           self[searchEndIndexMultipleLineBreaks] == "\n" {
+                            countMultipleLineBreaks += 1
+                            index += 1
+                            isEndSpace = false
+                        } else if let searchEndIndexMultipleLineBreaks = self.index(startIndex, offsetBy: endIndexMultipleLineBreaks, limitedBy: self.endIndex),
+                                  self[searchEndIndexMultipleLineBreaks] == " " {
+                            isEndSpace = true
+                            index += 1
+                        } else {
+                            isFindEndMultipleLineBreaks = true
+                        }
+                        endIndexMultipleLineBreaks += 1
+                    }
+                    if countMultipleLineBreaks > 0 {
+                        resultString.append("\n\n")
+                    } else {
+                        resultString.append("\n")
+                    }
+                    if isEndSpace {
+                        index -= 1
+                    }
+                } else {
+                    resultString.append(self[searchStartIndex] )
+                }
+                index += 1
+            }
+        }
+        if self.last != "\n" {
+            resultString.append(self.last ?? Character(""))
+        }
+        return resultString
     }
     
     func udRemoveFirstSpaces() -> String {
@@ -99,9 +153,12 @@ extension String {
     func udRemoveFirstSymbol(with symbol: Character) -> String {
         var resultString = self
         var isNeedRemove = resultString.first == symbol ? true : false
-        while isNeedRemove {
+        let maxCountRepeat = 100000
+        var countRepeat = 0
+        while isNeedRemove && countRepeat < maxCountRepeat {
             resultString.removeFirst()
             isNeedRemove = resultString.first == symbol ? true : false
+            countRepeat += 1
         }
         return resultString
     }
@@ -109,55 +166,120 @@ extension String {
     func udRemoveLastSymbol(with symbol: Character) -> String {
         var resultString = self
         var isNeedRemove = resultString.last == symbol ? true : false
-        while isNeedRemove {
+        let maxCountRepeat = 100000
+        var countRepeat = 0
+        while isNeedRemove && countRepeat < maxCountRepeat {
             resultString.removeLast()
             isNeedRemove = resultString.last == symbol ? true : false
+            countRepeat += 1
+        }
+        return resultString
+    }
+    
+    func udRemoveFirstAndLastLineBreaksAndSpaces() -> String {
+        var resultString = self
+        let maxCountRepeat = 10000
+        var countRepeat = 0
+        while (resultString.first == " " || resultString.first == "\n" || resultString.last == " " || resultString.last == "\n") && countRepeat < maxCountRepeat {
+            resultString = resultString.udRemoveFirstSymbol(with: "\n")
+            resultString = resultString.udRemoveFirstSymbol(with: " ")
+            resultString = resultString.udRemoveLastSymbol(with: "\n")
+            resultString = resultString.udRemoveLastSymbol(with: " ")
+            countRepeat += 1
         }
         return resultString
     }
     
     mutating func udRemoveMarkdownUrlsAndReturnLinks() -> [String] {
+        guard self.count > 5 else {return []}
         var links: [String] = []
-        var count = 0
+        let maxCountRepeat = 1000
+        var countRepeat = 0
         var flag = true
-        while count < 900 && flag {
-            if let range = self.range(of: "![") {
+        var startRangeIndex = self.startIndex
+        while countRepeat < maxCountRepeat && flag {
+            guard udIsIndexValid(startRangeIndex) else {break}
+            guard let endRangeIndex = self.index(self.endIndex, offsetBy: -1, limitedBy: self.startIndex) else {break}
+            if let range = self[startRangeIndex...endRangeIndex].range(of: "![") {
                 let startIndex = range.lowerBound
+                if let index = self.index(startIndex, offsetBy: 1, limitedBy: self.endIndex), udIsIndexValid(index) {
+                    startRangeIndex = index
+                }
                 var isFindEnd = false
                 var index = 0
                 while !isFindEnd {
-                    if let searchStartIndex = self.index(startIndex, offsetBy: index, limitedBy: self.endIndex) {
-                        if let searchEndIndex = self.index(searchStartIndex, offsetBy: 1, limitedBy: self.endIndex) {
-                            if self[searchStartIndex...searchEndIndex] == "](" {
-                                var indexSearchEndLink = 0
-                                while !isFindEnd {
-                                    if let searchIndex = self.index(searchEndIndex, offsetBy: indexSearchEndLink, limitedBy: self.endIndex) {
-                                        if self[searchIndex] == ")" {
+                    if let searchStartIndex = self.index(startIndex, offsetBy: index, limitedBy: self.endIndex),
+                       let searchEndIndex = self.index(searchStartIndex, offsetBy: 1, limitedBy: self.endIndex),
+                       udIsIndexValid(searchStartIndex),
+                       udIsIndexValid(searchEndIndex) {
+                        if self[searchStartIndex...searchEndIndex] == "](" {
+                            var indexSearchEndLink = 0
+                            while !isFindEnd {
+                                if let searchIndex = self.index(searchEndIndex, offsetBy: indexSearchEndLink, limitedBy: self.endIndex),
+                                   udIsIndexValid(searchIndex) {
+                                    if self[searchIndex] == ")" {
+                                        // get link
+                                        var linkPath = ""
+                                        if let startLinkIndex = self.index(searchEndIndex, offsetBy: +1, limitedBy: self.endIndex),
+                                           let endLinkIndex = self.index(searchIndex, offsetBy: -1, limitedBy: self.startIndex),
+                                           endLinkIndex > startLinkIndex,
+                                           udIsIndexValid(startLinkIndex),
+                                           udIsIndexValid(endLinkIndex) {
+                                            linkPath = String(self[startLinkIndex...endLinkIndex])
+                                            
+                                        }
+                                        isFindEnd = true
+                                        if linkPath.udIsValidUrl() {
                                             // add link
-                                            if let startLinkIndex = self.index(searchEndIndex, offsetBy: +1, limitedBy: self.endIndex) {
-                                                if let endLinkIndex = self.index(searchIndex, offsetBy: -1, limitedBy: self.startIndex) {
-                                                    if endLinkIndex > startLinkIndex {
-                                                        links.append(String(self[startLinkIndex...endLinkIndex]))
-                                                    }
-                                                }
-                                            }
+                                            links.append(linkPath)
                                             //remove link
-                                            isFindEnd = true
-                                            self = self.replacingOccurrences(of: self[startIndex...searchIndex], with: "")
+                                            if udIsIndexValid(startIndex) && udIsIndexValid(searchIndex) {
+                                                self = self.replacingOccurrences(of: self[startIndex...searchIndex], with: "")
+                                            }
                                             if let enterIndex = self.index(startIndex, offsetBy: -1, limitedBy: self.startIndex) {
                                                 if self[enterIndex] == "\n" {
                                                     self.remove(at: enterIndex)
                                                 }
                                             }
                                         }
-                                    } else {
-                                        isFindEnd = true
                                     }
-                                    indexSearchEndLink += 1
+                                } else {
+                                    isFindEnd = true
                                 }
+                                indexSearchEndLink += 1
                             }
-                        } else {
+                        }
+                    } else {
+                        isFindEnd = true
+                    }
+                    index += 1
+                }
+            } else {
+                flag = false
+            }
+            countRepeat += 1
+        }
+        return links
+    }
+    
+    func udIsIndexValid(_ index: Index) -> Bool {
+        return self.endIndex > index && self.startIndex <= index
+    }
+    
+    mutating func udConvertUrls() {
+        var count = 0
+        var flag = true
+        while count < 9000 && flag {
+            if let range = self.range(of: "<http") {
+                let startIndex = range.lowerBound
+                var isFindEnd = false
+                var index = 0
+                while !isFindEnd {
+                    if let searchEndIndex = self.index(startIndex, offsetBy: index, limitedBy: self.endIndex) {
+                        if self[searchEndIndex] == ">" {
                             isFindEnd = true
+                            self = self.replacingOccurrences(of: self[searchEndIndex...searchEndIndex], with: "")
+                            self = self.replacingOccurrences(of: self[startIndex...startIndex], with: "")
                         }
                     } else {
                         isFindEnd = true
@@ -169,13 +291,48 @@ extension String {
             }
             count += 1
         }
-        return links
+    }
+    
+    mutating func udConverDoubleLinks() {
+        guard self.count > 19, self.contains("[](") else {return}
+        let patternAllConstructionUrl = "(\\[\\]\\([a-zA-Zа-яА-Я0-9:@.-_]{1,250}\\)[a-zA-Zа-яА-Я0-9<>-_\n@.]{1,250}\\[\\]\\([a-zA-Zа-яА-Я0-9:@.-_]{1,250}\\))"
+        let patternUrl = "(\\)[a-zA-Zа-яА-Я0-9<>\n@.]{1,250}\\[)"
+        var range = NSRange(location: 0, length: self.count + 1)
+        let regexAllConstructionUrl = try! NSRegularExpression(pattern: patternAllConstructionUrl)
+        let regexUrl = try! NSRegularExpression(pattern: patternUrl)
+        var isExistConstructionUrl = regexAllConstructionUrl.firstMatch(in: self, options: [], range: range) != nil
+        var countRepeat = 0
+        let maxCountRepeat = 1000
+        while countRepeat < maxCountRepeat && isExistConstructionUrl {
+            let rangeAllConstructionUrlInSelf = regexAllConstructionUrl.rangeOfFirstMatch(in: self, range: range)
+            let allConstructionUrl = self[rangeAllConstructionUrlInSelf.location - 1..<rangeAllConstructionUrlInSelf.lowerBound + rangeAllConstructionUrlInSelf.length]
+            let rangeAllConstructionUrl = NSRange(location: 0, length: allConstructionUrl.count)
+            if regexUrl.firstMatch(in: allConstructionUrl, options: [], range: rangeAllConstructionUrl) != nil {
+                let rangeUrl = regexUrl.rangeOfFirstMatch(in: allConstructionUrl, range: rangeAllConstructionUrl)
+                let url = allConstructionUrl[rangeUrl.lowerBound + 1..<(rangeUrl.lowerBound + rangeUrl.length - 1)]
+                self = self.replacingOccurrences(of: allConstructionUrl, with: url)
+            }
+            range = NSRange(location: 0, length: self.count + 1)
+            isExistConstructionUrl = regexAllConstructionUrl.firstMatch(in: self, options: [], range: range) != nil
+            countRepeat += 1
+        }
     }
 
     private func singleLineHeight(attributes: [NSAttributedString.Key : Any]) -> CGFloat {
         let attributedString = NSAttributedString(string: "0", attributes: attributes)
         
         return attributedString.size().height
+    }
+    
+    subscript(_ range: CountableRange<Int>) -> String {
+        let start = index(startIndex, offsetBy: max(0, range.lowerBound))
+        let end = index(start, offsetBy: min(self.count - range.lowerBound, range.upperBound - range.lowerBound))
+        return String(self[start..<end])
+    }
+
+    subscript(_ range: CountablePartialRangeFrom<Int>) -> String {
+        let start = index(startIndex, offsetBy: max(0, range.lowerBound))
+         return String(self[start...])
     }
 }
 

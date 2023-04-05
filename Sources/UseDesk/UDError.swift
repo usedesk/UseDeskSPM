@@ -1,8 +1,5 @@
 //
 //  UDError.swift
-//  UseDesk_SDK_Swift
-//
-//
 
 import Foundation
 import Alamofire
@@ -11,6 +8,7 @@ import Alamofire
     case null
     case chanelIdError
     case urlError
+    case urlAvatarError
     case emailError
     case urlToSendFileError
     case urlAPIError
@@ -22,6 +20,7 @@ import Alamofire
     case socketError
     case emptyKnowledgeBaseID
     case emptyTokenAPI
+    case initChatWhenChatOpenError
     
     public init(errorCode: Int) {
         switch errorCode {
@@ -40,6 +39,8 @@ import Alamofire
             return "Invalid chanel id"
         case .urlError:
             return "Invalid url"
+        case .urlAvatarError:
+            return "Invalid avatar url"
         case .emailError:
             return "Invalid email"
         case .urlToSendFileError:
@@ -62,7 +63,9 @@ import Alamofire
             return "Empty knowledgeBaseID"
         case .emptyTokenAPI:
             return "Empty api_token"
+        case .initChatWhenChatOpenError:
+            return "Chat already open"
         }
-        
     }
 }
+
