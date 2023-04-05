@@ -11,12 +11,12 @@
         }
       },
       {
-        "package": "Down",
-        "repositoryURL": "https://github.com/johnxnguyen/Down",
+        "package": "MarkdownKit",
+        "repositoryURL": "https://github.com/bmoliveira/MarkdownKit",
         "state": {
           "branch": null,
-          "revision": "f34b166be1f1db4aa8f573067e901d72f2a6be57",
-          "version": "0.11.0"
+          "revision": "5056f3305d3499f44d8815530d560b87082e0cf5",
+          "version": "1.7.1"
         }
       },
       {
@@ -35,6 +35,15 @@
           "branch": null,
           "revision": "df8d82047f6654d8e4b655d1b1525c64e1059d21",
           "version": "4.0.4"
+        }
+      },
+      {
+        "package": "SwiftSoup",
+        "repositoryURL": "https://github.com/scinfu/SwiftSoup",
+        "state": {
+          "branch": null,
+          "revision": "f707b8680cddb96dc1855632340a572ef37bbb98",
+          "version": "2.5.3"
         }
       }
     ]

@@ -1,8 +1,6 @@
 //
 //  UDNetworkManager.swift
-//  UseDesk_SDK_Swift
-//
-//
+
 import Foundation
 import SocketIO
 import Alamofire
@@ -10,10 +8,12 @@ import Alamofire
 public class UDNetworkManager {
     
     public var model = UseDeskModel()
+    weak var usedesk: UseDeskSDK?
     
     public weak var socket: SocketIOClient?
     private var isAuthInited = false
     private var isSendedAdditionalField = false
+    private var isSendedFirstMessage = false
     private var isAuthSuccess = false
     private var token: String? {
         return model.token != "" ? model.token : loadToken()
@@ -36,14 +36,32 @@ public class UDNetworkManager {
     }
     
     // MARK: - API Methods
-    public func sendOfflineForm(companyID: String, chanelID: String, name: String, email: String, message: String, topic: String? = nil, fields: [UDCallbackCustomField]? = nil, connectBlock: @escaping UDConnectBlock, errorBlock: @escaping UDErrorBlock) {
+    public func sendOfflineForm(companyID: String, chanelID: String, name: String, email: String, message: String, file: UDFile? = nil, topic: String? = nil, fields: [UDCallbackCustomField]? = nil, connectBlock: @escaping UDConnectBlock, errorBlock: @escaping UDErrorBlock) {
         let companyAndChanelIds = "\(companyID)_\(chanelID)"
+        var parameterUser: [String : Any] = [
+            "os" : "iOS"
+        ]
+        if let targetName = Bundle.main.infoDictionary?["CFBundleName"] {
+            parameterUser["browserName"] = targetName
+        }
+        
         var parameters: [String : Any] = [
             "company_id" : companyAndChanelIds,
             "message" : message,
             "name" : name,
-            "email" : email
+            "email" : email,
+            "userData" : parameterUser
         ]
+        
+        if let sendFile = file, !sendFile.content.isEmpty {
+            let parameterFile: [String : Any] = [
+                "name" : sendFile.name,
+                "content" : sendFile.content,
+                "type" : sendFile.mimeType,
+                "size" : "NaN undefined"
+            ]
+            parameters["file"] = parameterFile
+        }
         
         if topic != nil {
             if topic != "" {
@@ -63,41 +81,60 @@ public class UDNetworkManager {
         }, errorBlock: errorBlock)
     }
     
-    public func sendAvatarClient(email: String? = nil, phone: String? = nil, avatarData data: Data, connectBlock: UDConnectBlock? = nil, errorBlock: UDErrorBlock? = nil) {
-        if let currentToken = token {
-            DispatchQueue.global(qos: .utility).async {
-                let url = self.urlBase(isOnlyHost: true) + "/v1/chat/setClient"
-                AF.upload(multipartFormData: { multipartFormData in
-                    multipartFormData.append(currentToken.data(using: String.Encoding.utf8)!, withName: "token")
-                    multipartFormData.append(data, withName: "avatar", fileName: "avatar")
-                    if self.model.email != "" {
-                        multipartFormData.append(self.model.email.data(using: String.Encoding.utf8)!, withName: "email")
-                    }
-                    if self.model.phone != "" {
-                        multipartFormData.append(self.model.phone.data(using: String.Encoding.utf8)!, withName: "phone")
-                    }
-                    if self.model.name != "" {
-                        multipartFormData.append(self.model.name.data(using: String.Encoding.utf8)!, withName: "username")
-                    }
-                    if self.model.companyID != "" {
-                        multipartFormData.append(self.model.companyID.data(using: String.Encoding.utf8)!, withName: "company_id")
-                    }
-                }, to: url).responseJSON { (responseJSON) in
-                    switch responseJSON.result {
-                    case .success(let value):
-                        let valueJSON = value as! [String:Any]
-                        if valueJSON["error"] == nil {
-                            connectBlock?(true)
-                        } else {
-                            errorBlock?(.serverError, "Тhe file is not accepted by the server ")
+    public func sendAvatarClient(connectBlock: UDConnectBlock? = nil, errorBlock: UDErrorBlock? = nil) {
+        DispatchQueue.global(qos: .utility).async {
+            if let data = self.model.avatar {
+                self.uploadAvatarData(data, connectBlock: connectBlock, errorBlock: errorBlock)
+            } else if let urlAvatar = self.model.avatarUrl {
+                URLSession.shared.dataTask(with: urlAvatar, completionHandler: { [weak self] data, _, error in
+                    DispatchQueue.main.async {
+                        if let error = error {
+                            errorBlock?(.urlAvatarError, error.localizedDescription)
+                            return
                         }
-                    case .failure(let error):
-                        errorBlock?(.null, error.localizedDescription)
+                        guard let dataAvatar = data else {return}
+                        self?.uploadAvatarData(dataAvatar, connectBlock: connectBlock, errorBlock: errorBlock)
                     }
+                }).resume()
+            }
+        }
+    }
+    
+    private func uploadAvatarData(_ data: Data, connectBlock: UDConnectBlock? = nil, errorBlock: UDErrorBlock? = nil) {
+        guard let currentToken = token else {
+            errorBlock?(.tokenError, "")
+            return
+        }
+        DispatchQueue.global(qos: .utility).async {
+            let url = self.urlBase(isOnlyHost: true) + "/v1/chat/setClient"
+            AF.upload(multipartFormData: { multipartFormData in
+                multipartFormData.append(currentToken.data(using: String.Encoding.utf8)!, withName: "token")
+                multipartFormData.append(data, withName: "avatar", fileName: "avatar")
+                if self.model.email != "" {
+                    multipartFormData.append(self.model.email.data(using: String.Encoding.utf8)!, withName: "email")
+                }
+                if self.model.phone != "" {
+                    multipartFormData.append(self.model.phone.data(using: String.Encoding.utf8)!, withName: "phone")
+                }
+                if self.model.name != "" {
+                    multipartFormData.append(self.model.name.data(using: String.Encoding.utf8)!, withName: "username")
+                }
+                if self.model.companyID != "" {
+                    multipartFormData.append(self.model.companyID.data(using: String.Encoding.utf8)!, withName: "company_id")
+                }
+            }, to: url).responseJSON { (responseJSON) in
+                switch responseJSON.result {
+                case .success(let value):
+                    let valueJSON = value as! [String:Any]
+                    if valueJSON["error"] == nil {
+                        connectBlock?(true)
+                    } else {
+                        errorBlock?(.serverError, "Тhe file is not accepted by the server ")
+                    }
+                case .failure(let error):
+                    errorBlock?(.null, error.localizedDescription)
                 }
             }
-        } else {
-            errorBlock?(.tokenError, "")
         }
     }
     
@@ -122,7 +159,7 @@ public class UDNetworkManager {
         })
     }
     
-    public func sendFile(url: String, fileName: String, data: Data, messageId: String? = nil, progressBlock: UDProgressUploadBlock? = nil, connectBlock: @escaping UDConnectBlock, errorBlock: @escaping UDErrorBlock) {
+    public func sendFile(url: String, fileName: String, data: Data, messageId: String? = nil, progressBlock: UDProgressUploadBlock? = nil, connectBlock: UDConnectBlock? = nil, errorBlock: UDErrorBlock? = nil) {
         if let currentToken = token {
             DispatchQueue.global(qos: .utility).async {
                 AF.upload(multipartFormData: { multipartFormData in
@@ -140,17 +177,18 @@ public class UDNetworkManager {
                     case .success(let value):
                         let valueJSON = value as! [String:Any]
                         if valueJSON["error"] == nil {
-                            connectBlock(true)
+                            connectBlock?(true)
                         } else {
-                            errorBlock(.serverError, "Тhe file is not accepted by the server ")
+                            errorBlock?(.serverError, "Тhe file is not accepted by the server ")
                         }
                     case .failure(let error):
-                        errorBlock(.null, error.localizedDescription)
+                        print(error.localizedDescription)
+                        errorBlock?(.null, error.localizedDescription)
                     }
                 }
             }
         } else {
-            errorBlock(.tokenError, "")
+            errorBlock?(.tokenError, "")
         }
     }
     
@@ -185,6 +223,151 @@ public class UDNetworkManager {
             guard let wSelf = self else {return}
             wSelf.isSendedAdditionalField = true
         }, errorBlock: {_,_  in})
+    }
+    
+    public func getAdditionalFields(for message: UDMessage, successBlock: @escaping UDMessageBlock, errorBlock: @escaping UDErrorBlock) {
+        guard token != nil else {
+            errorBlock(.tokenError, nil)
+            return
+        }
+        var idsAdditionalFields = [Int]()
+        for form in message.forms {
+            if form.type == .additionalField, form.idAdditionalField > 0 {
+                idsAdditionalFields.append(form.idAdditionalField)
+            }
+        }
+        guard idsAdditionalFields.count > 0 else {
+            errorBlock(.null, nil)
+            return
+        }
+        var url = urlBase(isOnlyHost: true)
+        url += "/v1/widget/field_list"
+        var idsString = ""
+        for index in 0..<idsAdditionalFields.count {
+            idsString += "\(idsAdditionalFields[index])"
+            if index != idsAdditionalFields.count - 1 {
+                idsString += ","
+            }
+        }
+        let parameters: [String : Any] = [
+            "chat" : token!,
+            "ids" : idsString
+        ]
+        DispatchQueue.global(qos: .background).async {
+            self.request(url: url, method: .post, parameters: parameters, isJSONEncoding: true, successBlock: {[weak self] response in
+                guard self != nil else {return}
+                let newMessage = message
+                let fields = UDField.parse(from: response, ids: idsAdditionalFields)
+                // create form for childe fields
+                for field in fields {
+                    if let index = newMessage.forms.firstIndex(where: {$0.idAdditionalField == field.id}) {
+                        newMessage.forms[index].field = field
+                        if newMessage.forms[index].name.isEmpty {
+                            newMessage.forms[index].name = field.name
+                        }
+                    } else {
+                        let form = UDFormMessage(name: field.name, type: .additionalField, field: field)
+                        if let index = newMessage.forms.firstIndex(where: {$0.idAdditionalField == field.idParentField}) {
+                            newMessage.forms.insert(form, at: index + 1)
+                        } else {
+                            newMessage.forms.append(form)
+                        }
+                    }
+                }
+                var loadedForms: [UDFormMessage] = []
+                for form in newMessage.forms {
+                    if form.type == .additionalField {
+                        if form.field != nil {
+                            loadedForms.append(form)
+                        }
+                    } else {
+                        loadedForms.append(form)
+                    }
+                }
+                newMessage.forms = loadedForms
+                // set required status for additionalField
+                for indexForm in 0..<newMessage.forms.count {
+                    if newMessage.forms[indexForm].type == .additionalField {
+                        if let index = newMessage.forms.firstIndex(where: {$0.idAdditionalField == newMessage.forms[indexForm].field?.idParentField}) {
+                            newMessage.forms[indexForm].isRequired = newMessage.forms[index].isRequired
+                        }
+                    }
+                }
+                successBlock(newMessage)
+            }, errorBlock: { error, description in
+                errorBlock(error, description)
+            })
+        }
+    }
+    
+    public func sendAdditionalFields(for message: UDMessage, successBlock: @escaping UDVoidBlock, errorBlock: @escaping UDErrorBlock) {
+        guard token != nil else {
+            errorBlock(.tokenError, nil)
+            return
+        }
+        var url = urlBase(isOnlyHost: true)
+        url += "/v1/widget/custom_form/save"
+        var formsParameters: [[String : Any]] = []
+        var forms = message.forms
+        while forms.count > 0 {
+            let form = forms[0]
+            forms.remove(at: 0)
+            if form.type == .additionalField, let field = form.field {
+                if field.type == .text {
+                    let formParameters: [String : Any] = [
+                        "associate" : form.idAdditionalField,
+                        "value"     : field.value
+                    ]
+                    formsParameters.append(formParameters)
+                } else if field.type == .checkbox {
+                    let formParameters: [String : Any] = [
+                        "associate" : form.idAdditionalField,
+                        "value"     : field.value == "1" ? "true" : "false"
+                    ]
+                    formsParameters.append(formParameters)
+                } else if let selectedOptionFirstField = field.selectedOption?.id {
+                    var formParameters: [String : Any] = ["associate" : form.idAdditionalField]
+                    var formsChildeParameters: [[String : Any]] = []
+                    formsChildeParameters.append(["id" : form.field!.id, "value" : String(selectedOptionFirstField)])
+                    var isExistChildeFields = true
+                    var idParentField = form.idAdditionalField
+                    while forms.count > 0 && isExistChildeFields {
+                        if forms[0].field?.idParentField == idParentField {
+                            if let selectedOption = forms[0].field!.selectedOption {
+                                formsChildeParameters.append(["id" : forms[0].field!.id, "value" : String(selectedOption.id)])
+                            }
+                            idParentField = forms[0].idAdditionalField
+                            forms.remove(at: 0)
+                        } else {
+                            isExistChildeFields = false
+                        }
+                    }
+                    if formsChildeParameters.count > 1 {
+                        formParameters["value"] = formsChildeParameters
+                    } else {
+                        formParameters["value"] = String(selectedOptionFirstField)
+                    }
+                    formsParameters.append(formParameters)
+                }
+            } else {
+                let formParameters: [String : Any] = [
+                    "associate" : form.type.rawValue,
+                    "required" : form.isRequired,
+                    "value" : form.value
+                ]
+                formsParameters.append(formParameters)
+            }
+        }
+        let parameters: [String : Any] = [
+            "chat" : token!,
+            "form" : formsParameters
+        ]
+        request(url: url, method: .post, parameters: parameters, isJSONEncoding: true, successBlock: {[weak self] response in
+            guard self != nil else {return}
+            successBlock()
+        }, errorBlock: { error, description in
+            errorBlock(error, description)
+        })
     }
     
     // MARK: - API Base Methods
@@ -240,7 +423,7 @@ public class UDNetworkManager {
         if countNegative > 0 {
             parameters["count_negative"] = String(countNegative)
         }
-        request(url: url, method: .get, parameters: parameters, successBlock: { value in
+        request(url: url, parameters: parameters, successBlock: { value in
             connectBlock(true)
         }, errorBlock: errorBlock)
     }
@@ -359,6 +542,7 @@ public class UDNetworkManager {
         socket?.connect()
         socket?.on("connect", callback: { [weak self] data, ack in
             guard let wSelf = self else {return}
+            wSelf.usedesk?.isConnecting = true
             connectBlock?(true)
             print("socket connected")
             let arrConfStart = UseDeskSDKHelp.config_CompanyID(wSelf.model.companyID, chanelId: wSelf.model.chanelId, email: wSelf.model.email, phone: wSelf.model.phone, name: wSelf.model.name, url: wSelf.model.url, countMessagesOnInit: wSelf.model.countMessagesOnInit, token: wSelf.token)
@@ -369,10 +553,10 @@ public class UDNetworkManager {
     public func socketError(socket: SocketIOClient?, errorBlock: UDErrorBlock?) {
         socket?.on("error", callback: { [weak self] data, ack in
             guard let wSelf = self else {return}
-            if !wSelf.isAuthInited {
-                errorBlock?(.falseInitChatError, UDError.falseInitChatError.description)
+            print(data.description)
+            if wSelf.isAuthInited {
+                errorBlock?(.falseInitChatError, data.description)
             } else {
-                print(data)
                 errorBlock?(.socketError, data.description)
             }
         })
@@ -381,6 +565,7 @@ public class UDNetworkManager {
     public func socketDisconnect(socket: SocketIOClient?, connectBlock: UDConnectBlock? = nil) {
         socket?.on("disconnect", callback: { [weak self] data, ack in
             guard let wSelf = self else {return}
+            wSelf.usedesk?.isConnecting = false
             connectBlock?(false)
             print("socket disconnect")
             let arrConfStart = UseDeskSDKHelp.config_CompanyID(wSelf.model.companyID, chanelId: wSelf.model.chanelId, email: wSelf.model.email, phone: wSelf.model.phone, name: wSelf.model.name, url: wSelf.model.url, countMessagesOnInit: wSelf.model.countMessagesOnInit, token: wSelf.token)
@@ -388,7 +573,7 @@ public class UDNetworkManager {
         })
     }
     
-    public func socketDispatch(socket: SocketIOClient?, startBlock: @escaping UDStartBlock, historyMessagesBlock: @escaping ([UDMessage]) -> Void, callbackSettingsBlock: @escaping (UDCallbackSettings) -> Void, newMessageBlock: UDNewMessageBlock?, feedbackMessageBlock: UDFeedbackMessageBlock?, feedbackAnswerMessageBlock: UDFeedbackAnswerMessageBlock?) {
+    public func socketDispatch(socket: SocketIOClient?, startBlock: @escaping UDStartBlock, historyMessagesBlock: @escaping ([UDMessage]) -> Void, callbackSettingsBlock: @escaping (UDCallbackSettings) -> Void, newMessageBlock: UDMessageBlock?, feedbackMessageBlock: UDFeedbackMessageBlock?, feedbackAnswerMessageBlock: UDFeedbackAnswerMessageBlock?) {
         socket?.on("dispatch", callback: { [weak self] data, ack in
             guard let wSelf = self else {return}
             if data.count == 0 {
@@ -399,10 +584,10 @@ public class UDNetworkManager {
             }, setClientBlock: { [weak self] in
                 guard let wSelf = self else {return}
                 wSelf.socket?.emit("dispatch", with: UseDeskSDKHelp.dataClient(wSelf.model.email, phone: wSelf.model.phone, name: wSelf.model.name, note: wSelf.model.note, token: wSelf.token ?? "", additional_id: wSelf.model.additional_id)!) { [weak self] in
-                    if self?.isAuthSuccess ?? false {
+                    if (self?.isAuthSuccess ?? false) && !wSelf.isSendedFirstMessage {
+                        wSelf.isSendedFirstMessage = true
                         if wSelf.model.firstMessage != "" {
                             let id = wSelf.newIdLoadingMessages()
-                            wSelf.model.idLoadingMessages.append(id)
                             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                                 wSelf.sendMessage(wSelf.model.firstMessage, messageId: id)
                                 wSelf.model.firstMessage = ""
@@ -410,9 +595,7 @@ public class UDNetworkManager {
                         }
                     }
                 }
-                if let avatar = wSelf.model.avatar {
-                    wSelf.sendAvatarClient(avatarData: avatar)
-                }
+                wSelf.sendAvatarClient()
             })
 
             let isNoOperators = UDSocketResponse.isNoOperators(data)
@@ -452,9 +635,7 @@ public class UDNetworkManager {
             case .success(let value):
                 if let valueDictionary = value as? [String : Any] {
                     if valueDictionary["error"] != nil {
-                        if let code = valueDictionary["code"] as? Int {
-                            errorBlock(UDError(errorCode: code), UDError(errorCode: code).description)
-                        }
+                        errorBlock(.serverError, UDError.serverError.description)
                     } else {
                         successBlock(value)
                     }
@@ -486,7 +667,7 @@ public class UDNetworkManager {
     }
     
     private func save(token: String) {
-        model.token = token
+        usedesk?.model.token = token
         if model.isSaveTokensInUserDefaults {
             let key = "usedeskClientToken\(model.email)\(model.phone)\(model.name)\(model.chanelId)"
             UserDefaults.standard.set(token, forKey: key)

@@ -1,8 +1,5 @@
 //
 //  UDConfiguration.swift
-//  UseDesk_SDK_Swift
-//
-//
 
 import Alamofire
 import Foundation
@@ -32,7 +29,7 @@ public typealias UDBaseBlock = (Bool, [UDBaseCollection]?) -> Void
 public typealias UDArticleBlock = (Bool, UDArticle?) -> Void
 public typealias UDArticleSearchBlock = (Bool, UDSearchArticle?) -> Void
 public typealias UDConnectBlock = (Bool) -> Void
-public typealias UDNewMessageBlock = (UDMessage?) -> Void
+public typealias UDMessageBlock = (UDMessage?) -> Void
 public typealias UDNewMessagesBlock = ([UDMessage]) -> Void
 public typealias UDErrorBlock = (UDError, String?) -> Void
 public typealias UDFeedbackMessageBlock = (UDMessage?) -> Void
@@ -59,6 +56,7 @@ public typealias UDValidModelBlock = (UseDeskModel) -> Void
 @objc public protocol UDStorage {
     func getMessages() -> [UDMessage]
     func saveMessages(_ messages: [UDMessage])
+    func removeMessage(_ messages: [UDMessage])
 }
 
 public struct UseDeskModel {
@@ -76,6 +74,7 @@ public struct UseDeskModel {
     var port = ""
     var name = ""
     var avatar: Data? = nil
+    var avatarUrl: URL? = nil
     var nameOperator = ""
     var nameChat = ""
     var firstMessage = ""

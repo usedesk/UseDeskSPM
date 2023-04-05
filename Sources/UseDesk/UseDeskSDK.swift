@@ -6,7 +6,7 @@ import SocketIO
 import UserNotifications
 
 public class UseDeskSDK: NSObject {
-    @objc public var newMessageBlock: UDNewMessageBlock?
+    @objc public var newMessageBlock: UDMessageBlock?
     @objc public var connectBlock: UDConnectBlock?
     @objc public var feedbackMessageBlock: UDFeedbackMessageBlock?
     @objc public var feedbackAnswerMessageBlock: UDFeedbackAnswerMessageBlock?
@@ -32,22 +32,23 @@ public class UseDeskSDK: NSObject {
             networkManager?.model = model
         }
     }
+    var isConnecting: Bool = false
     // Network
     var networkManager: UDNetworkManager? = nil
     
     // MARK: - Start Methods
     
-    @objc public func start(companyID: String, chanelId: String, url: String, port: String? = nil, urlAPI: String? = nil, api_token: String? = nil, urlToSendFile: String? = nil, knowledgeBaseID: String? = nil, name: String? = nil, email: String? = nil, phone: String? = nil, avatar: Data? = nil, token: String? = nil, additional_id: String? = nil, note: String? = nil, additionalFields: [Int : String] = [:], additionalNestedFields: [[Int : String]] = [], firstMessage: String? = nil, countMessagesOnInit: NSNumber? = nil, localeIdentifier: String? = nil, customLocale: [String : String]? = nil, isSaveTokensInUserDefaults: Bool = true, connectionStatus startBlock: @escaping UDStartBlock, errorStatus errorBlock: @escaping UDErrorBlock) {
+    @objc public func start(companyID: String, chanelId: String, url: String, port: String? = nil, urlAPI: String? = nil, api_token: String? = nil, urlToSendFile: String? = nil, knowledgeBaseID: String? = nil, name: String? = nil, email: String? = nil, phone: String? = nil, avatar: Data? = nil, avatarUrl: URL? = nil, token: String? = nil, additional_id: String? = nil, note: String? = nil, additionalFields: [Int : String] = [:], additionalNestedFields: [[Int : String]] = [], firstMessage: String? = nil, countMessagesOnInit: NSNumber? = nil, localeIdentifier: String? = nil, customLocale: [String : String]? = nil, isSaveTokensInUserDefaults: Bool = true, connectionStatus startBlock: @escaping UDStartBlock, errorStatus errorBlock: @escaping UDErrorBlock) {
         
-        UDValidationManager.validateInitionalsFields(companyID: companyID, chanelId: chanelId, url: url, port: port, urlAPI: urlAPI, api_token: api_token, urlToSendFile: urlToSendFile, knowledgeBaseID: knowledgeBaseID, name: name, email: email, phone: phone, avatar: avatar, token: token, additional_id: additional_id, note: note, additionalFields: additionalFields, additionalNestedFields: additionalNestedFields, firstMessage: firstMessage, countMessagesOnInit: countMessagesOnInit, localeIdentifier: localeIdentifier, customLocale: customLocale, isSaveTokensInUserDefaults: isSaveTokensInUserDefaults, validModelBlock: { [weak self] validModel in
+        UDValidationManager.validateInitionalsFields(companyID: companyID, chanelId: chanelId, url: url, port: port, urlAPI: urlAPI, api_token: api_token, urlToSendFile: urlToSendFile, knowledgeBaseID: knowledgeBaseID, name: name, email: email, phone: phone, avatar: avatar, avatarUrl: avatarUrl, token: token, additional_id: additional_id, note: note, additionalFields: additionalFields, additionalNestedFields: additionalNestedFields, firstMessage: firstMessage, countMessagesOnInit: countMessagesOnInit, localeIdentifier: localeIdentifier, customLocale: customLocale, isSaveTokensInUserDefaults: isSaveTokensInUserDefaults, validModelBlock: { [weak self] validModel in
             self?.model = validModel
             self?.start(startBlock: startBlock, errorBlock: errorBlock)
         }, errorStatus: errorBlock)
     }
     
     // MARK: - Public Methods
-    @objc public func sendAvatarClient(avatarData: Data, connectBlock: @escaping UDConnectBlock, errorBlock: @escaping UDErrorBlock) {
-        networkManager?.sendAvatarClient(avatarData: avatarData, connectBlock: connectBlock, errorBlock: errorBlock)
+    @objc public func sendAvatarClient(connectBlock: @escaping UDConnectBlock, errorBlock: @escaping UDErrorBlock) {
+        networkManager?.sendAvatarClient(connectBlock: connectBlock, errorBlock: errorBlock)
     }
     
     @objc public func getMessages(idComment: Int, newMessagesBlock: @escaping UDNewMessagesBlock, errorBlock: @escaping UDErrorBlock) {
@@ -88,8 +89,8 @@ public class UseDeskSDK: NSObject {
         networkManager?.getSearchArticles(collection_ids: collection_ids, category_ids: category_ids, article_ids: article_ids, count: count, page: page, query: query, type: type, sort: sort, order: order, searchBlock: searchBlock, errorBlock: errorBlock)
     }
     
-    func sendOfflineForm(name nameClient: String?, email emailClient: String?, message: String, topic: String? = nil, fields: [UDCallbackCustomField]? = nil, callback resultBlock: @escaping UDConnectBlock, errorStatus errorBlock: @escaping UDErrorBlock) {
-        networkManager?.sendOfflineForm(companyID: model.companyID, chanelID: model.chanelId, name: nameClient ?? model.name, email: emailClient ?? model.email, message: message, topic: topic, fields: fields, connectBlock: resultBlock, errorBlock: errorBlock)
+    func sendOfflineForm(name nameClient: String?, email emailClient: String?, message: String, file: UDFile? = nil, topic: String? = nil, fields: [UDCallbackCustomField]? = nil, callback resultBlock: @escaping UDConnectBlock, errorStatus errorBlock: @escaping UDErrorBlock) {
+        networkManager?.sendOfflineForm(companyID: model.companyID, chanelID: model.chanelId, name: nameClient ?? model.name, email: emailClient ?? model.email, message: message, file: file, topic: topic, fields: fields, connectBlock: resultBlock, errorBlock: errorBlock)
     }
     
     @objc public func sendMessageFeedBack(_ status: Bool, message_id: Int) {
@@ -104,6 +105,7 @@ public class UseDeskSDK: NSObject {
     @objc public func releaseChat() {
         networkManager = nil
         socket?.disconnect()
+        manager?.disconnect()
         socket = nil
         manager = nil
         historyMess = []
@@ -123,20 +125,26 @@ public class UseDeskSDK: NSObject {
         #if DEBUG
             isNeedLogSocket = true
         #endif
-        manager = SocketManager(socketURL: urlAdress!, config: [.log(isNeedLogSocket), .version(.three)])
+        manager = SocketManager(socketURL: urlAdress!, config: [.log(isNeedLogSocket),
+                                                                .version(.three),
+                                                                .reconnects(true),
+                                                                .reconnectWaitMax(1),
+                                                                .reconnectWait(0),
+                                                                .forceWebsockets(true)])
         socket = manager?.defaultSocket
 
         if networkManager == nil {
             networkManager = UDNetworkManager(model: model)
         }
+        networkManager?.usedesk = self
         networkManager?.model = model
         networkManager?.socket = socket
         
         networkManager?.socketConnect(socket: socket, connectBlock: connectBlock)
         networkManager?.socketError(socket: socket, errorBlock: errorBlock)
         networkManager?.socketDisconnect(socket: socket, connectBlock: connectBlock)
-        networkManager?.socketDispatch(socket: socket, startBlock: { [weak self] success, feedbackstatus, error in
-            startBlock(success, feedbackstatus, error)
+        networkManager?.socketDispatch(socket: socket, startBlock: { [weak self] success, feedbackStatus, token in
+            startBlock(success, feedbackStatus, token)
             self?.connectBlock?(true)
         }, historyMessagesBlock: { [weak self] messages in
             self?.historyMess = messages
