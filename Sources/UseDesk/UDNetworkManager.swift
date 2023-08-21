@@ -546,7 +546,7 @@ public class UDNetworkManager {
             connectBlock?(true)
             print("socket connected")
             let arrConfStart = UseDeskSDKHelp.config_CompanyID(wSelf.model.companyID, chanelId: wSelf.model.chanelId, email: wSelf.model.email, phone: wSelf.model.phone, name: wSelf.model.name, url: wSelf.model.url, countMessagesOnInit: wSelf.model.countMessagesOnInit, token: wSelf.token)
-            socket?.emit("dispatch", with: arrConfStart!, completion: nil)
+            socket?.emit("dispatch", arrConfStart!, completion: nil)
         })
     }
     
@@ -569,7 +569,7 @@ public class UDNetworkManager {
             connectBlock?(false)
             print("socket disconnect")
             let arrConfStart = UseDeskSDKHelp.config_CompanyID(wSelf.model.companyID, chanelId: wSelf.model.chanelId, email: wSelf.model.email, phone: wSelf.model.phone, name: wSelf.model.name, url: wSelf.model.url, countMessagesOnInit: wSelf.model.countMessagesOnInit, token: wSelf.token)
-            socket?.emit("dispatch", with: arrConfStart!, completion: nil)
+            socket?.emit("dispatch", arrConfStart!, completion: nil)
         })
     }
     
@@ -583,7 +583,7 @@ public class UDNetworkManager {
                 self?.save(token: token)
             }, setClientBlock: { [weak self] in
                 guard let wSelf = self else {return}
-                wSelf.socket?.emit("dispatch", with: UseDeskSDKHelp.dataClient(wSelf.model.email, phone: wSelf.model.phone, name: wSelf.model.name, note: wSelf.model.note, token: wSelf.token ?? "", additional_id: wSelf.model.additional_id)!) { [weak self] in
+                wSelf.socket?.emit("dispatch", UseDeskSDKHelp.dataClient(wSelf.model.email, phone: wSelf.model.phone, name: wSelf.model.name, note: wSelf.model.note, token: wSelf.token ?? "", additional_id: wSelf.model.additional_id)!) { [weak self] in
                     if (self?.isAuthSuccess ?? false) && !wSelf.isSendedFirstMessage {
                         wSelf.isSendedFirstMessage = true
                         if wSelf.model.firstMessage != "" {
@@ -625,7 +625,7 @@ public class UDNetworkManager {
     
     public func sendMessage(_ text: String, messageId: String? = nil) {
         let mess = UseDeskSDKHelp.messageText(text, messageId: messageId)
-        socket?.emit("dispatch", with: mess!, completion: nil)
+        socket?.emit("dispatch", mess!, completion: nil)
     }
     
     // MARK: - Private Methods

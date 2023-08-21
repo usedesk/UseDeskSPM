@@ -61,7 +61,7 @@ public class UseDeskSDK: NSObject {
     @objc public func sendMessage(_ text: String, messageId: String? = nil, completionBlock: UDVoidBlock? = nil) {
         let mess = UseDeskSDKHelp.messageText(text, messageId: messageId)
         socket?.connect()
-        socket?.emit("dispatch", with: mess!, completion: completionBlock)
+        socket?.emit("dispatch", mess!, completion: completionBlock)
     }
     
     @objc public func sendFile(fileName: String, data: Data, messageId: String? = nil, progressBlock: UDProgressUploadBlock? = nil, connectBlock: UDConnectBlock? = nil, errorBlock: UDErrorBlock? = nil) {
@@ -98,7 +98,7 @@ public class UseDeskSDK: NSObject {
     }
     
     @objc public func sendMessageFeedBack(_ status: Bool, message_id: Int) {
-        socket?.emit("dispatch", with: UseDeskSDKHelp.feedback(status, message_id: message_id)!, completion: nil)
+        socket?.emit("dispatch", UseDeskSDKHelp.feedback(status, message_id: message_id)!, completion: nil)
     }
     
     @objc public func closeChat() {
