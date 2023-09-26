@@ -40,6 +40,9 @@ public class UseDeskSDK: NSObject {
     
     @objc public func start(companyID: String, chanelId: String, url: String, port: String? = nil, urlAPI: String? = nil, api_token: String? = nil, urlToSendFile: String? = nil, knowledgeBaseID: String? = nil, name: String? = nil, email: String? = nil, phone: String? = nil, avatar: Data? = nil, avatarUrl: URL? = nil, token: String? = nil, additional_id: String? = nil, note: String? = nil, additionalFields: [Int : String] = [:], additionalNestedFields: [[Int : String]] = [], firstMessage: String? = nil, countMessagesOnInit: NSNumber? = nil, localeIdentifier: String? = nil, customLocale: [String : String]? = nil, isSaveTokensInUserDefaults: Bool = true, connectionStatus startBlock: @escaping UDStartBlock, errorStatus errorBlock: @escaping UDErrorBlock) {
         
+        closureStartBlock = startBlock
+        closureErrorBlock = errorBlock
+        
         UDValidationManager.validateInitionalsFields(companyID: companyID, chanelId: chanelId, url: url, port: port, urlAPI: urlAPI, api_token: api_token, urlToSendFile: urlToSendFile, knowledgeBaseID: knowledgeBaseID, name: name, email: email, phone: phone, avatar: avatar, avatarUrl: avatarUrl, token: token, additional_id: additional_id, note: note, additionalFields: additionalFields, additionalNestedFields: additionalNestedFields, firstMessage: firstMessage, countMessagesOnInit: countMessagesOnInit, localeIdentifier: localeIdentifier, customLocale: customLocale, isSaveTokensInUserDefaults: isSaveTokensInUserDefaults, validModelBlock: { [weak self] validModel in
             self?.model = validModel
             self?.start(startBlock: startBlock, errorBlock: errorBlock)
@@ -55,12 +58,13 @@ public class UseDeskSDK: NSObject {
         networkManager?.getMessages(idComment: idComment, newMessagesBlock: newMessagesBlock, errorBlock: errorBlock)
     }
     
-    @objc public func sendMessage(_ text: String, messageId: String? = nil) {
+    @objc public func sendMessage(_ text: String, messageId: String? = nil, completionBlock: UDVoidBlock? = nil) {
         let mess = UseDeskSDKHelp.messageText(text, messageId: messageId)
-        socket?.emit("dispatch", with: mess!, completion: nil)
+        socket?.connect()
+        socket?.emit("dispatch", mess!, completion: completionBlock)
     }
     
-    @objc public func sendFile(fileName: String, data: Data, messageId: String? = nil, progressBlock: UDProgressUploadBlock? = nil, connectBlock: @escaping UDConnectBlock, errorBlock: @escaping UDErrorBlock) {
+    @objc public func sendFile(fileName: String, data: Data, messageId: String? = nil, progressBlock: UDProgressUploadBlock? = nil, connectBlock: UDConnectBlock? = nil, errorBlock: UDErrorBlock? = nil) {
         let url = model.urlToSendFile != "" ? model.urlToSendFile : "https://secure.usedesk.ru/uapi/v1/send_file"
         networkManager?.sendFile(url: url, fileName: fileName, data: data, messageId: messageId, progressBlock: progressBlock, connectBlock: connectBlock, errorBlock: errorBlock)
     }
@@ -94,7 +98,7 @@ public class UseDeskSDK: NSObject {
     }
     
     @objc public func sendMessageFeedBack(_ status: Bool, message_id: Int) {
-        socket?.emit("dispatch", with: UseDeskSDKHelp.feedback(status, message_id: message_id)!, completion: nil)
+        socket?.emit("dispatch", UseDeskSDKHelp.feedback(status, message_id: message_id)!, completion: nil)
     }
     
     @objc public func closeChat() {

@@ -1,6 +1,5 @@
 //
 //  UDUIImageExtension.swift
-//
 
 import Foundation
 import UIKit

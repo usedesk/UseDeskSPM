@@ -1,8 +1,6 @@
 //
 //  UDSocketResponse.swift
-//  UseDesk_SDK_Swift
-//
-//
+
 import Foundation
 import MarkdownKit
 import SwiftSoup

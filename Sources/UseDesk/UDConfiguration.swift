@@ -38,21 +38,6 @@ public typealias UDVoidBlock = () -> Void
 public typealias UDProgressUploadBlock = (Progress) -> Void
 public typealias UDValidModelBlock = (UseDeskModel) -> Void
 
-@objc public enum UDFeedbackStatus: Int {
-    case null
-    case never
-    case feedbackForm
-    case feedbackFormAndChat
-    
-    var isNotOpenFeedbackForm: Bool {
-        return self == .null || self == .never
-    }
-    
-    var isOpenFeedbackForm: Bool {
-        return self == .feedbackForm || self == .feedbackFormAndChat
-    }
-}
-
 @objc public protocol UDStorage {
     func getMessages() -> [UDMessage]
     func saveMessages(_ messages: [UDMessage])
@@ -100,5 +85,20 @@ public struct UseDeskModel {
     
     func isEmpty() -> Bool {
         return companyID == ""
+    }
+}
+
+@objc public enum UDFeedbackStatus: Int {
+    case null
+    case never
+    case feedbackForm
+    case feedbackFormAndChat
+    
+    var isNotOpenFeedbackForm: Bool {
+        return self == .null || self == .never
+    }
+    
+    var isOpenFeedbackForm: Bool {
+        return self == .feedbackForm || self == .feedbackFormAndChat
     }
 }
